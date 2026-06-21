@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/><title>Subnet Emissions</title>
+<style>:root{--bg:#0b0d10;--line:#222a33;--text:#e6e9ed;--muted:#8b95a1;--up:#6fa79c;--down:#b06a6a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,sans-serif}
+.wrap{max-width:720px;margin:48px auto;padding:0 20px}.head{display:flex;justify-content:space-between;align-items:baseline}
+h1{font-size:15px;font-weight:600;margin:0}.badge{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+table{width:100%;border-collapse:collapse;margin-top:16px}th,td{text-align:right;padding:10px 12px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}th{color:var(--muted);font-weight:500;font-size:12px;cursor:pointer}
+.up{color:var(--up)}.down{color:var(--down)}</style></head>
+<body><div class="wrap"><div class="head"><h1>Subnet Emissions</h1><span class="badge" id="src">Sample data</span></div>
+<table><thead><tr><th data-k="name">Subnet</th><th data-k="emission">Emission %</th><th data-k="change">24h</th></tr></thead>
+<tbody id="rows"></tbody></table></div>
+<script>
+// Live source not yet wired; clearly labeled as sample so nothing is presented as live data.
+const SAMPLE=[{name:'sn4 targon',emission:7.2,change:1.4},{name:'sn8 taoshi',emission:5.9,change:-0.6},{name:'sn1 apex',emission:5.1,change:0.3}];
+async function fetchEmissions(){ /* TODO: replace with live on-chain/taostats fetch */ return {live:false,rows:SAMPLE}; }
+let key='emission',dir=-1;
+async function render(){const {live,rows}=await fetchEmissions();
+ document.getElementById('src').textContent = live?'Live':'Sample data';
+ const s=[...rows].sort((a,b)=>(a[key]>b[key]?1:-1)*dir);
+ document.getElementById('rows').innerHTML=s.map(d=>{const c=d.change>=0?'up':'down',g=d.change>=0?'+':'';
+  return '<tr><td>'+d.name+'</td><td>'+d.emission.toFixed(1)+'</td><td class="'+c+'">'+g+d.change.toFixed(1)+'%</td></tr>'}).join('');}
+document.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{const k=th.dataset.k;dir=key===k?-dir:-1;key=k;render()});
+render();
+</script></body></html>
