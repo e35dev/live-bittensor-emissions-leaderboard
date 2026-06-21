@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Subnet Emissions</title>
+<style>
+  :root { --bg:#0b0d10; --row:#12161b; --line:#222a33; --text:#e6e9ed; --muted:#8b95a1; --up:#6fa79c; --down:#b06a6a; }
+  * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.4 ui-sans-serif,system-ui,sans-serif; }
+  .wrap { max-width:760px; margin:48px auto; padding:0 20px; }
+  .head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; }
+  h1 { font-size:15px; font-weight:600; letter-spacing:.02em; margin:0; }
+  .updated { color:var(--muted); font-size:12px; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:right; padding:10px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th:first-child,td:first-child { text-align:left; }
+  th { color:var(--muted); font-weight:500; font-size:12px; cursor:pointer; user-select:none; }
+  tbody tr:hover { background:var(--row); }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .spark { font-family:ui-monospace,monospace; color:var(--muted); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head"><h1>Subnet Emissions</h1><span class="updated" id="updated"></span></div>
+    <table>
+      <thead><tr>
+        <th data-k="name">Subnet</th><th data-k="emission">Emission %</th>
+        <th data-k="change">24h</th><th>Trend</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+<script>
+  // Placeholder data until the live on-chain source is wired in.
+  const data = [
+    { name:'sn4 targon', emission:7.2, change:1.4, spark:'▁▂▃▅▆▇' },
+    { name:'sn8 taoshi', emission:5.9, change:-0.6, spark:'▆▅▅▃▂▂' },
+    { name:'sn1 apex', emission:5.1, change:0.3, spark:'▃▃▄▄▅▅' },
+    { name:'sn19 nineteen', emission:4.4, change:2.1, spark:'▁▁▂▄▆▇' },
+  ];
+  let sortKey='emission', dir=-1;
+  function render(){
+    const sorted=[...data].sort((a,b)=> (a[sortKey]>b[sortKey]?1:-1)*dir);
+    document.getElementById('rows').innerHTML = sorted.map(d=>{
+      const cls = d.change>=0?'up':'down', sign=d.change>=0?'+':'';
+      return '<tr><td>'+d.name+'</td><td>'+d.emission.toFixed(1)+'</td>'+
+        '<td class="'+cls+'">'+sign+d.change.toFixed(1)+'%</td>'+
+        '<td class="spark">'+d.spark+'</td></tr>';
+    }).join('');
+    document.getElementById('updated').textContent = 'updated '+new Date().toLocaleTimeString();
+  }
+  document.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k; dir = sortKey===k? -dir : -1; sortKey=k; render();
+  });
+  render();
+</script>
+</body>
+</html>
