@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bittensor Subnet Emissions</title>
+<style>
+  :root{--bg:#0b0d10;--panel:#12161b;--line:#222a33;--text:#e6e9ed;--muted:#8b95a1;--up:#6fa79c;--down:#b06a6a;--mineral:#6fa79c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,sans-serif}
+  .wrap{max-width:760px;margin:48px auto;padding:0 20px}
+  .head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}
+  h1{font-size:15px;font-weight:600;letter-spacing:.02em;margin:0}
+  .sub{color:var(--muted);font-size:12px;margin:0 0 18px}
+  .status{color:var(--muted);font-size:12px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:right;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  td.name{color:var(--text)} td.net{color:var(--muted);font-variant-numeric:tabular-nums}
+  th{color:var(--muted);font-weight:500;font-size:12px;cursor:pointer;user-select:none}
+  th[aria-sort="descending"]::after{content:" ↓"} th[aria-sort="ascending"]::after{content:" ↑"}
+  tbody tr:hover{background:var(--panel)}
+  td.num{font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .down{color:var(--down)}
+  .note{margin-top:18px;color:var(--muted);font-size:12px;border:1px solid var(--line);border-radius:6px;padding:12px}
+  .note code{color:var(--text)}
+  [role="alert"]{color:var(--down)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head"><h1>Bittensor Subnet Emissions</h1><span class="status" id="status"></span></div>
+    <p class="sub">Live emission share per subnet, sorted by momentum. Click a column to re-sort.</p>
+    <div id="view"></div>
+  </div>
+<script>
+  // Live data only. Set TAOSTATS_KEY at deploy to the Taostats API key.
+  // We never render fabricated numbers as if they were live; without a live
+  // response the page shows an explicit state instead.
+  const TAOSTATS_KEY = ""; // injected at deploy
+  const ENDPOINT = "https://api.taostats.io/api/subnet/latest/v1";
+
+  const $ = (id) => document.getElementById(id);
+  let rows = [], sortKey = "change", dir = -1;
+
+  async function fetchSubnets(){
+    const res = await fetch(ENDPOINT, { headers: { Authorization: TAOSTATS_KEY, accept: "application/json" } });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    const data = Array.isArray(json) ? json : (json.data || []);
+    return data.map((d) => ({
+      netuid: d.netuid ?? d.net_uid,
+      name: d.name || d.subnet_name || ("subnet " + (d.netuid ?? "?")),
+      emission: Number(d.emission ?? d.emission_share ?? 0) * (d.emission > 1 ? 1 : 100),
+      change: Number(d.emission_change_24h ?? d.change_24h ?? 0),
+    }));
+  }
+
+  function render(){
+    const s = [...rows].sort((a,b)=> (a[sortKey] > b[sortKey] ? 1 : -1) * dir);
+    $("view").innerHTML =
+      '<table><thead><tr>' +
+      [["netuid","#"],["name","Subnet"],["emission","Emission %"],["change","24h"]]
+        .map(([k,l])=>'<th data-k="'+k+'" role="columnheader" aria-sort="'+(k===sortKey?(dir<0?"descending":"ascending"):"none")+'" tabindex="0">'+l+'</th>').join('') +
+      '</tr></thead><tbody>' +
+      s.map(r=>'<tr><td class="net">'+r.netuid+'</td><td class="name">'+r.name+'</td>'+
+        '<td class="num">'+r.emission.toFixed(2)+'</td>'+
+        '<td class="num '+(r.change>=0?'up':'down')+'">'+(r.change>=0?'+':'')+r.change.toFixed(2)+'%</td></tr>').join('') +
+      '</tbody></table>';
+    $("view").querySelectorAll("th[data-k]").forEach(th=>{
+      const go=()=>{ const k=th.dataset.k; dir = sortKey===k ? -dir : -1; sortKey=k; render(); };
+      th.onclick=go; th.onkeydown=(e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
+    });
+  }
+
+  async function load(){
+    if(!TAOSTATS_KEY){
+      $("view").innerHTML = '<div class="note">Live emissions feed is not connected. Set <code>TAOSTATS_KEY</code> to a Taostats API key to load live subnet data. No placeholder numbers are shown.</div>';
+      $("status").textContent = "not connected";
+      return;
+    }
+    $("status").textContent = "loading…"; $("view").setAttribute("aria-busy","true");
+    try{
+      rows = await fetchSubnets();
+      if(!rows.length){ $("view").innerHTML = '<p role="status">No subnets reporting yet.</p>'; $("status").textContent=""; return; }
+      render();
+      $("status").textContent = "live · updated " + new Date().toLocaleTimeString();
+    }catch(e){
+      $("view").innerHTML = '<p role="alert">Live emissions are temporarily unavailable ('+e.message+'). Retrying shortly.</p>';
+      $("status").textContent = "";
+      setTimeout(load, 15000);
+    }finally{ $("view").removeAttribute("aria-busy"); }
+  }
+  load();
+  setInterval(load, 60000);
+</script>
+</body>
+</html>
